@@ -14,4 +14,3 @@ models:
       +materialized: table
     marts:
       +materialized: table
-    # mart_daily_summary (aggregation layer) added in a later class — see future/

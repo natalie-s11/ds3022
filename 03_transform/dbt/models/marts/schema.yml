@@ -2,9 +2,24 @@ version: 2
 
 models:
   - name: fct_trips
-    description: One row per validated trip with derived duration/speed/tip metrics.
+    description: >
+      One row per validated trip with derived duration/speed/tip metrics.
+      There is no natural key (the TLC data has no trip ID and identical
+      trips can legitimately repeat), so there is no uniqueness test —
+      the derived columns are what get tested instead.
     columns:
       - name: trip_duration_minutes
+        tests:
+          - not_null
+      - name: avg_speed_mph
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 60
+                inclusive: true
+      - name: tip_pct
         tests:
           - not_null
       - name: pickup_date
@@ -37,11 +52,34 @@ models:
         tests:
           - not_null
 
+  - name: mart_speed_by_hour_dow
+    description: >
+      Avg speed, duration, and distance by day of week x hour of day —
+      the congestion-proxy grain for QUESTIONS.md #5.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [pickup_dow, pickup_hour]
+    columns:
+      - name: pickup_dow
+        tests:
+          - not_null
+      - name: pickup_hour
+        tests:
+          - not_null
+      - name: trip_count
+        tests:
+          - not_null
+
   - name: mart_location_rankings
     description: >
       Top 10 and bottom 10 taxi zones by trip count, ranked separately for
       pickups and dropoffs (40 rows). Excludes zones 264/265 (Unknown /
       Outside of NYC). Mapped by plots/plot_location_rankings.py.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [location_type, rank_group, location_rank]
     columns:
       - name: location_type
         tests:
@@ -53,5 +91,16 @@ models:
           - accepted_values:
                 values: ['top', 'bottom']
       - name: location_id
+        tests:
+          - not_null
+
+  - name: mart_daily_summary
+    description: Daily aggregate trip volume, revenue, and speed metrics.
+    columns:
+      - name: pickup_date
+        tests:
+          - unique
+          - not_null
+      - name: trip_count
         tests:
           - not_null

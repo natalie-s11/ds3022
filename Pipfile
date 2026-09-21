@@ -13,6 +13,9 @@ seaborn = "*"
 numpy = "*"
 dbt-duckdb = "*"
 dbt-core = "*"
+requests = "*"
+httpx = "*"
+asyncio = "*"
 
 [dev-packages]
 

@@ -1,8 +1,16 @@
 version: 2
 
 models:
+  - name: stg_taxi_zones
+    description: Taxi zone lookup (265 zones) — LocationID to borough/zone name, cached as a local table.
+    columns:
+      - name: location_id
+        tests:
+          - unique
+          - not_null
+
   - name: stg_yellow_tripdata
-    description: Cleaned, typed staging view over raw yellow taxi parquet.
+    description: Cleaned, typed staging table over raw yellow taxi parquet.
     columns:
       - name: pickup_at
         tests:
@@ -10,3 +18,21 @@ models:
       - name: trip_distance_miles
         tests:
           - not_null
+      - name: pickup_location_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_taxi_zones')
+                field: location_id
+      - name: dropoff_location_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_taxi_zones')
+                field: location_id
+      - name: payment_type_code
+        description: TLC payment type (0 flex fare, 1 credit, 2 cash, 3 no charge, 4 dispute, 5 unknown, 6 voided).
+        tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1, 2, 3, 4, 5, 6]

@@ -1,10 +1,7 @@
--- Mart: trip demand by hour of day — answers QUESTIONS.md #1
--- (does the day have a single commute peak, a bimodal AM/PM pattern,
--- or something flatter?). One row per hour (0-23), grain is plot-ready
--- as an x=pickup_hour, y=trip_count line/bar chart.
+-- Mart: daily rollup — the grain a dashboard or report would consume.
 
 select
-    hour(pickup_at)                       as pickup_hour,
+    pickup_date,
     count(*)                              as trip_count,
     round(avg(trip_distance_miles), 2)    as avg_distance_miles,
     round(avg(trip_duration_minutes), 2)  as avg_duration_minutes,
@@ -13,11 +10,11 @@ select
     -- the same); this one is total miles / total hours, the true fleet speed
     round(sum(trip_distance_miles) / (sum(trip_duration_minutes) / 60.0), 2)
                                           as fleet_avg_speed_mph,
-    round(avg(fare_amount), 2)            as avg_fare_amount,
+    round(sum(total_amount), 2)           as total_revenue,
     round(avg(tip_pct) * 100, 2)          as avg_tip_pct,
     -- total tips / total fares (dollar-weighted), vs. the mean of per-trip tip %
     round(sum(tip_amount) / sum(fare_amount) * 100, 2)
                                           as fleet_tip_pct
 from {{ ref('fct_trips') }}
-group by pickup_hour
-order by pickup_hour
+group by pickup_date
+order by pickup_date
