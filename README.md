@@ -13,3 +13,5 @@
 
 - [**Data** | **Types** | **Schemas**](01_data/)
 - [**Queries** | **Columnar**](02_query/)
+- [**Transformation** | **DuckDB** ](03_transform/)
+- [**Ingest** | **APIs** | **Exceptions** | **Logging**](04_ingest/)
