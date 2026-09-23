@@ -1,4 +1,4 @@
-# future release files
+# future release files (instructor-only staging for later classes; intentionally not published)
 *future*
 
 # Byte-compiled / optimized / DLL files
@@ -14,8 +14,11 @@ __pycache__/
 *.duckdb.wal
 *.db
 
-# Generated plots/images from pipeline runs
-03_transform/dbt/plots/
+# Generated plots/images from pipeline runs (plot scripts stay tracked)
+03_transform/dbt/plots/*.png
+03_transform/dbt/plots/taxi_zones/
+# dbt packages installed by `dbt deps`
+03_transform/dbt/dbt_packages/
 03_transform/trip_distance_cutoffs.png
 
 # C extensions
@@ -231,3 +234,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Downloaded parquet files from 03_transform/dbt/load.py
+03_transform/dbt/data/

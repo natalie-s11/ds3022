@@ -9,13 +9,10 @@
 {{ config(materialized='view') }}
 
 with zones as (
-    select
-        cast(locationid as integer) as location_id,
-        "Borough"                   as borough,
-        "Zone"                      as zone
-    from {{ source('raw', 'taxi_zone_lookup') }}
+    select location_id, borough, zone
+    from {{ ref('stg_taxi_zones') }}
     -- 264 = Unknown, 265 = Outside of NYC: not mappable places
-    where locationid not in (264, 265)
+    where location_id not in (264, 265)
 ),
 
 trips as (

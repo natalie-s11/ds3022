@@ -4,10 +4,9 @@ A minimal dbt project transforming NYC yellow taxi trip data, using
 DuckDB as the adapter so it reads parquet directly over HTTPS — no
 warehouse, download, or load step needed.
 
-This project is being built up gradually across three classes. Right
-now it contains staging (Class 1) plus tests and the `fct_trips` fact
-model (Class 2 scope); the rest lives in `future/` and gets folded in
-as we go.
+This project is being built up gradually across three classes. Models,
+tests, and marts are released class by class, so your copy may contain
+only part of what's described below.
 
 ## Layout
 
@@ -18,19 +17,32 @@ nyc_taxi_dbt/
 ├── models/
 │   ├── staging/
 │   │   ├── sources.yml               # points at the raw parquet (local or remote)
-│   │   ├── stg_yellow_tripdata.sql   # cast/clean raw columns
-│   │   └── schema.yml                # column tests on the staging model
+│   │   ├── stg_yellow_tripdata.sql   # cast/clean raw trip columns
+│   │   ├── stg_taxi_zones.sql        # cast/clean the zone lookup (LocationID -> name)
+│   │   └── schema.yml                # column tests on the staging models
 │   └── marts/
-│       ├── fct_trips.sql             # derived duration/speed/tip metrics per trip
+│       ├── fct_trips.sql                 # derived duration/speed/tip metrics per trip
+│       ├── mart_hourly_demand.sql        # demand by hour of day
+│       ├── mart_monthly_demand.sql       # demand by month
+│       ├── mart_daily_summary.sql        # daily volume, revenue, speed
+│       ├── mart_speed_by_hour_dow.sql    # speed by day of week x hour
+│       ├── mart_location_rankings.sql    # top/bottom 10 zones by pickups/dropoffs
 │       └── schema.yml
-├── tests/
-│   ├── assert_no_zero_or_null_trips.sql       # business-rule test on staging
-│   └── assert_no_unrealistic_trip_speeds.sql  # business-rule test on fct_trips
-└── future/                     # not yet wired into models/ — added in later classes
-    └── marts/
-        ├── mart_daily_summary.sql
-        └── schema.yml
+├── packages.yml                # dbt_utils, installed with `dbt deps`
+├── plots/                      # scripts that chart the marts (output PNGs are git-ignored)
+└── tests/
+    ├── assert_no_zero_or_null_trips.sql       # business-rule test on fct_trips
+    ├── assert_no_unrealistic_trip_speeds.sql  # business-rule test on fct_trips
+    └── assert_dropoff_after_pickup.sql        # business-rule test on staging
 ```
+
+| Mart | Answers (`QUESTIONS.md`) | Grain |
+|---|---|---|
+| `mart_hourly_demand` | #1 daily demand curve | one row per hour (0-23) |
+| `mart_monthly_demand` | #3 seasonality | one row per month |
+| `mart_daily_summary` | daily rollup for dashboards/reports | one row per day |
+| `mart_speed_by_hour_dow` | #5 speed as a congestion proxy | one row per (day of week, hour) |
+| `mart_location_rankings` | busiest/quietest zones | one row per (location type, top/bottom, rank) |
 
 ## Setup
 
@@ -39,8 +51,9 @@ nyc_taxi_dbt/
 3. From the `nyc_taxi_dbt/` directory:
 
 ```bash
+dbt deps         # install packages (dbt_utils)
 dbt debug        # confirm the connection
-dbt run          # build stg_yellow_tripdata and fct_trips
+dbt run          # build the staging models, fct_trips, and the marts
 dbt test         # run column tests + the singular tests in tests/
 ```
 
@@ -137,8 +150,8 @@ build `stg_yellow_tripdata` once, then scope subsequent runs to
 
 - **Class 1:** `stg_yellow_tripdata` only — a `source()` reading raw
   parquet, cast/renamed columns, a `where` filter dropping bad rows.
-  Materialized as a `view`.
-- **Class 2 (current):** column tests on staging (`not_null` on
+  Materialized as a `table`.
+- **Class 2:** column tests on staging (`not_null` on
   `pickup_at`, `trip_distance_miles`) plus a singular test,
   `assert_no_zero_or_null_trips.sql`. Adds `fct_trips`
   (`models/marts/fct_trips.sql`), wired via `{{ ref() }}` to the
@@ -146,14 +159,16 @@ build `stg_yellow_tripdata` once, then scope subsequent runs to
   (duration/speed/tip%), and `table` materialization. A second
   singular test, `assert_no_unrealistic_trip_speeds.sql`, checks a
   *derived* column against a business rule (no NYC taxi can plausibly
-  average >100mph) — something a generic `not_null`/`unique` test
+  average >60mph) — something a generic `not_null`/`unique` test
   can't express.
-- **Class 3:** add `mart_daily_summary` (`future/marts/mart_daily_summary.sql`)
-  for the daily-rollup aggregation layer, and its `schema.yml` tests
-  (`unique` + `not_null` on the `pickup_date` grain).
+- **Class 3:** the marts layer — aggregation models built on `fct_trips`
+  (hourly/monthly demand, speed by hour and day of week, location
+  rankings, and a daily summary), with `unique` / `not_null` /
+  `dbt_utils.unique_combination_of_columns` tests on each grain.
 
 ## Model chain (end state, after Class 3)
 
-`stg_yellow_tripdata` (view, cleans/casts raw parquet) →
+`stg_yellow_tripdata` (table, cleans/casts raw parquet) →
 `fct_trips` (table, adds duration/speed/tip_pct, drops bad durations) →
-`mart_daily_summary` (table, daily aggregates for reporting)
+the marts (aggregates for reporting; `mart_location_rankings` also joins
+`stg_taxi_zones`, a table caching the zone-lookup CSV)
