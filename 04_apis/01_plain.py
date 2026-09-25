@@ -4,14 +4,24 @@
 import httpx
 import json
 
+<<<<<<< HEAD
 USER = "schaconz"
+=======
+USER = "schaconxyz"
+>>>>>>> upstream/main
 URL = "https://api.github.com/users/{user}/events/public"
 
 response = httpx.get(URL.format(user=USER))
 
 data = response.json()
+<<<<<<< HEAD
 for item in data:
 	print(item["repo"]["name"], " - ", item["type"])
 
 
 # print(json.dumps(data, indent=2))
+=======
+
+for item in data:
+  print(item["repo"]["name"], " - ", item["type"])
+>>>>>>> upstream/main
