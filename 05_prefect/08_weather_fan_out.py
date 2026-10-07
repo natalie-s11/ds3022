@@ -1,3 +1,8 @@
+"""
+Fan-out / fan-in demo: fetch July 2025 daily highs for several cities in parallel
+(Open-Meteo, no API key), then rank them by average high.
+"""
+
 import requests
 from prefect import flow, task, unmapped, get_run_logger
 from prefect.futures import as_completed
