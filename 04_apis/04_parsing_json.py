@@ -12,20 +12,21 @@ URL = f"https://api.github.com/repos/{REPO}/commits/HEAD"
 # Fetch ONE commit (the most recent)
 response = httpx.get(URL, headers=HEADERS)
 
+
 # response.text is the raw JSON string; 
 # response.json() deserializes it into Python dicts/lists
 commit = response.json()
 
 # Print the full blob, pretty-printed, so we can walk through its structure
-print(json.dumps(commit, indent=2))
+#print(json.dumps(commit, indent=2))
 
 
 # --- Step 2: navigate the structure ---
 # Objects become dicts (index by key), arrays become lists (index by position or loop).
 #
-# print(commit["sha"])
-# print(commit["commit"]["author"]["name"])
-# print(commit["commit"]["author"]["date"])     # a str -- JSON has no date type
+# print(commit["sha"]) 
+print(commit["commit"]["author"]["name"])
+print(commit["commit"]["author"]["date"])     # a str -- JSON has no date type
 # print(commit["stats"])                        # nested dict: total, additions, deletions
 # print(len(commit["files"]))                   # list of dicts, one per changed file
 # for f in commit["files"]:
