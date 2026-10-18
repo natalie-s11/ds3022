@@ -19,6 +19,7 @@ to cycle through a series of related links to build up all 1000 records.
 """
 
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +37,13 @@ URL = "https://api.github.com/repos/git/git/commits"
 PER_PAGE = 100
 PAGES = 10
 
+# write our own log messages to a local file (in the folder you run the script from)
+log = logging.getLogger("gh_pagination")
+log.setLevel(logging.INFO)
+handler = logging.FileHandler("github_pagination.log")
+handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+log.addHandler(handler)
+
 
 # ------ only one task ------
 # create a single prefect task that loops through 10 pages
@@ -44,7 +52,7 @@ PAGES = 10
 # if successful you should have 1000 records in your db.
 
 # local duckdb file, created if missing
-conn = duckdb.connect("actions.duckdb")  
+conn = duckdb.connect("actions.duckdb")
 
 @task(name="ingest", log_prints=True, retries=3, retry_delay_seconds=5)
 def ingest_data():
@@ -67,14 +75,68 @@ def ingest_data():
     # if you need to see a working example of this, see this file in this repo
     # 04_apis/05_pagination.py
 
-    # just a placeholder for now. remove the print below this is built out
-    print("something")
+    # (re)create the table at the start of every attempt, so a Prefect retry
+    # starts empty instead of inserting duplicate rows
+    conn.execute("""
+        CREATE OR REPLACE TABLE commits (
+            sha     VARCHAR,
+            author  VARCHAR,
+            date    TIMESTAMP,
+            message VARCHAR
+        )
+    """)
+
+    url = URL                          # start at the first page
+    params = {"per_page": PER_PAGE}    # only needed on the first request
+    page = 1
+
+    try:
+        # keep going while there's a next page and we haven't hit the PAGES limit
+        while url and page <= PAGES:
+            response = httpx.get(url, headers=HEADERS, params=params)
+            response.raise_for_status()    # stop with an error if GitHub returns 401/403/404 etc.
+            commits = response.json()      # turn the JSON text into a Python list of dicts
+
+            print(f"page {page}: {len(commits)} commits")
+
+            # pull the 4 fields we want out of each nested commit dict
+            rows = []
+            for c in commits:
+                rows.append((
+                    c["sha"],
+                    c["commit"]["author"]["name"],
+                    c["commit"]["author"]["date"],
+                    c["commit"]["message"],
+                ))
+
+            # insert all 100 rows for this page in one call; ? are placeholders filled from each tuple
+            conn.executemany("INSERT INTO commits VALUES (?, ?, ?, ?)", rows)
+            log.info(f"page {page}: inserted {len(rows)} rows")
+
+            # follow GitHub's "next" link; None on the last page ends the loop
+            url = response.links.get("next", {}).get("url")
+            params = None                  # the next url already has per_page & page in it
+            page += 1
+    except httpx.HTTPError as e:
+        log.error(f"GitHub request failed on page {page}: {e}")
+        raise                              # re-raise so Prefect marks it failed and retries
+
+    total = conn.execute("SELECT count(*) FROM commits").fetchone()[0]
+    print(f"done: {total} rows in commits table")
+    log.info(f"done: {total} rows in commits table")
 
 
 # name the flow something you can identify as yourself
-@flow(name="nem2p-flow")
+@flow(name="teg9gu-flow")
 def main_flow():
     ingest_data()
 
 # it doesn't seem this flow executes when you run it. Why?
 # fix it ;^)
+
+# only run the flow when this file is executed directly (not when imported)
+if __name__ == "__main__":
+    try:
+        main_flow()
+    finally:
+        conn.close()    # always release the duckdb file, even if the flow fails
