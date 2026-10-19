@@ -1,39 +1,40 @@
+import gzip
+import json
+from collections import Counter
+import requests
 from prefect import flow, task
-from datetime import date
-import httpx
-
-BASE_URL = "https://data.gharchive.org/{day}-{hour}.json.gz"
 
 
-@task
-def build_hour_keys(start: date, days: int = 7) -> list[str]:
-    """Return 'YYYY-MM-DD-H' keys for each hour in the window."""
-    pass
+URL = "https://data.gharchive.org/2025-01-01-{hour}.json.gz"
 
 
-@task(retries=3, retry_delay_seconds=10)
-def count_events_for_hour(hour_key: str) -> dict[str, int]:
-    """Stream one hourly file and return {event_type: count}. No raw JSON kept."""
-    pass
-
-
-@task
-def combine_counts(hourly_counts: list[dict[str, int]]) -> dict[str, int]:
-    """Sum per-hour counts into weekly totals."""
-    pass
+@task(retries=3)
+def count_events_for_hour(hour):
+    # stream one hourly file and return {event_type: count}
+    # use a Counter named "counts" and pull out the "type"
+    # for each line in the stream
+    with requests.get(URL.format(hour=hour), stream=True) as r:
+        # do things
+        print("nothing")
+    print(f"hour {hour}: {counts.total()} events")
+    return dict(counts)
 
 
 @task
-def save_counts(totals: dict[str, int]) -> None:
-    """Persist aggregated counts only."""
+def combine_counts(hourly_counts):
+    # Total counts by type and order them
+    # print those to screen and return them
     pass
 
 
-@flow
-def gharchive_week_flow(start: date = date(2025, 1, 1), days: int = 7):
-    """Week of GH Archive -> counts by event type."""
-    pass
+@flow(log_prints=True)
+def gharchive_flow(hours: list[int] = list(range(1, 4))):
+    # take the range and create a prefect .map over the hours
+    hourly = count_events_for_hour.map(hours).result()
+    totals = combine_counts(hourly)
+    for k, v in totals.items():
+        print(k, v)
 
 
 if __name__ == "__main__":
-    gharchive_week_flow()
+    gharchive_flow()
