@@ -16,7 +16,8 @@ app = Application(
 )
 topic = app.topic(name=TOPIC, value_serializer="json")
 
-# Read messages from the WebSocket until the server closes it, producing each to Kafka
+# Read messages from the WebSocket until the server closes it, producing each to Kafka.
+# Key = cycle_id so every letter of one round lands on the same partition.
 def produce_messages():
     try:
         with connect(WS_URL) as ws, app.get_producer() as producer:
@@ -24,9 +25,9 @@ def produce_messages():
             # Each loop blocks until the next message arrives; ends when the server closes
             for raw in ws:
                 value = json.loads(raw)
-                # do
-                # things
-                # here
+                msg = topic.serialize(key=value["cycle_id"], value=value)
+                producer.produce(topic=topic.name, key=msg.key, value=msg.value)
+                print(value)
         print(f"Round complete; messages produced to '{TOPIC}'")
     except Exception as e:
         print(f"Error: {e}")

@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
 """
-Reads puzzle messages from the "puzzle" topic and prints each one's key,
-timestamp, and full JSON value. Storing, sorting, and reassembling are left
-to you.
+Reads puzzle messages from the "puzzle" topic and rebuilds the phrase
+by sorting the letters on order_no.
 """
 
 import os
 import json
-from datetime import datetime, timezone
 from quixstreams import Application
 
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "127.0.0.1:19092,127.0.0.1:29092,127.0.0.1:39092")
@@ -23,8 +21,9 @@ app = Application(
     # consumer_extra_config={"broker.address.family": "v4"},
 )
 
-# Print every message until the topic goes quiet for MAX_EMPTY_POLLS seconds
+# Collect letters until we have all `total` of them, then print the phrase
 def consume_messages():
+    letters = {}  # order_no -> letter
     try:
         # No offset commits, so every run re-reads the topic from the start
         with app.get_consumer(auto_commit_enable=False) as consumer:
@@ -40,19 +39,14 @@ def consume_messages():
                     print(f"Kafka error: {msg.error()}")
                     continue
                 empty_polls = 0
-                # here is the real message data for each log entry:
-                # each are part of the `msg`: msg.key, msg.timestamp(), msg.value()
-
-                # key / timestamp / value
-                key = msg.key().decode("utf8")
-
-                # Kafka timestamps are (type, epoch milliseconds)
-                ts = datetime.fromtimestamp(msg.timestamp()[1] / 1000, tz=timezone.utc).isoformat()
-
-                # value is the actual json payload of the message content
                 value = json.loads(msg.value())
-
-                print(f"key={key} timestamp={ts} value={json.dumps(value)}")
+                letters[value["order_no"]] = value["letter"]
+                # Stop once every letter has arrived
+                if len(letters) == value["total"]:
+                    break
+        # Sort by order_no and join the letters
+        phrase = "".join(letters[i] for i in sorted(letters))
+        print(f"Phrase: {phrase}")
     except Exception as e:
         print(f"Error consuming from Kafka: {e}")
 
