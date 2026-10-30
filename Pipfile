@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-boto3 = "*"
 polars = "*"
 pandas = "*"
 duckdb = "*"
@@ -15,15 +14,15 @@ dbt-duckdb = "*"
 dbt-core = "*"
 requests = "*"
 httpx = "*"
-asyncio = "*"
 psutil = "*"
 sympy = "*"
 bs4 = "*"
 prefect = "==3.8.7"
 quixstreams = "*"
-httpx2 = "*"
-requests-sse = "*"
 tornado = "*"
+redis = "*"
+streamlit = "*"
+websockets = "<17,>=15"
 
 [dev-packages]
 pytest = "*"

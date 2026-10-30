@@ -1,5 +1,6 @@
 # future release files (instructor-only staging for later classes; intentionally not published)
 *future*
+*logs*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -251,3 +252,6 @@ __marimo__/
 
 # GH Archive hourly files downloaded by 04_apis/gharchive/00-basic-events.py
 04_apis/gharchive/data/
+
+# Quix Streams local state directory
+state/
