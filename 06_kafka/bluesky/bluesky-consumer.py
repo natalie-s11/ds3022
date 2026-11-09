@@ -29,31 +29,23 @@ def main():
                 value = json.loads(msg.value())
                 offset = msg.offset()
 
-                # get out the "type" key from the value
+                # get out various keys from the value
                 operation = value['commit']['operation']
+                collection = value['commit']['collection']
                 
-                # Only process if change_type is not None
-                if operation is not None:
-                    # save these values to redis and use incr() to increment the value
-                    redis_client = redis.Redis(host="127.0.0.1", port=6379, db=0)
-                    redis_client.incr(operation)
-                    # print(f"Type count: {redis_client.get(change_type).decode('utf8')}")
-                    redis_client.close()
+                # Do something with the messages
+                # store incremental counts in redis by operation
+                # or collection
 
-                    # print on the screen
-                    print(f"{offset} --> {operation}")
-                else:
-                    print(f"{offset} {key} - No 'type' field in message")
-                # print(f"{offset} {key} {value}")
                 consumer.store_offsets(msg)
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        redis_client = redis.Redis(host="localhost", port=6379, db=0)
+        # redis_client = redis.Redis(host="localhost", port=6379, db=0)
         # for each key in redis, print the key and value
-        for key in redis_client.keys():
-            print(f"Type: {key.decode('utf8')} | Count: {redis_client.get(key).decode('utf8')}")
-        redis_client.close()
+        # for key in redis_client.keys():
+        #     print(f"Type: {key.decode('utf8')} | Count: {redis_client.get(key).decode('utf8')}")
+        # redis_client.close()
         pass
