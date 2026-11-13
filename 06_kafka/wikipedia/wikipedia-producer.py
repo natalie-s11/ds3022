@@ -52,13 +52,12 @@ class WikipediaStreamer:
             # Serialize the event
             serialized = self.topic.serialize(key=event_id, value=change_event)
             
-            # Produce to Kafka
-            with self.app.get_producer() as producer:
-                producer.produce(
-                    topic=self.topic.name,
-                    key=serialized.key,
-                    value=serialized.value
-                )
+            # Produce asynchronously with the shared producer (batched, no per-message flush)
+            self.producer.produce(
+                topic=self.topic.name,
+                key=serialized.key,
+                value=serialized.value
+            )
             return True
             
         except Exception as e:
@@ -100,8 +99,10 @@ class WikipediaStreamer:
                 'Accept': 'text/event-stream'
             }
             
-            # Connect to the SSE stream with headers
-            with EventSource(WIKIPEDIA_SSE_URL, headers=headers) as source:
+            # Open one producer for the whole run (flushes once on exit),
+            # then connect to the SSE stream with headers
+            with self.app.get_producer() as self.producer, \
+                 EventSource(WIKIPEDIA_SSE_URL, headers=headers) as source:
                 for event in source:
                     # The message data is in event.data as a JSON string
                     if event.data:
