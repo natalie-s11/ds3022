@@ -22,7 +22,7 @@ payload = {
   "messages": [{"role": "user", "content": [
     {"type": "text", "text": "Look at the people on bicycles in this image. What are they doing?"},
     {"type": "image_url", "image_url": {"url": "https://s3.amazonaws.com/uvasds-systems/images/vuelta.jpg"}}]}],
-  "temperature": 1,
+  "temperature": 0.3,
   "top_p": 0.95,
   "max_tokens": 16384,
   "parallel_tool_calls": True,
